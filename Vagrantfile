@@ -15,7 +15,7 @@ Vagrant.configure(2) do |config|
   config.vm.define "cloudstack-mgmt-server" do |cloudstack_mgmt|
     cloudstack_mgmt.vm.hostname = "cloudstack-mgmt.#{domain}"
   end
-  config.vm.provision "shell", path: "cloudstack-mgmt.sh"
+  config.vm.provision "shell", path: "acs-bootstrap/cloudstack-mgmt-bootstrap.sh"
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
