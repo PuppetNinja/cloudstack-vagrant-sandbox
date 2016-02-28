@@ -3,8 +3,9 @@
 # The process of configuration follows
 # http://docs.cloudstack.apache.org/projects/cloudstack-installation/en/4.8/management-server/index.html
 
-source bootstrap-utils.sh
+source "/home/vagrant/sync/acs-bootstrap/bootstrap-utils.sh"
 
+log_info "Install Expect..."
 yum install -y --quiet expect
 
 #########################################################
@@ -14,7 +15,8 @@ yum install -y --quiet expect
 # the hostname has been set by Vagrantfile
 
 # install ntp
-yum install -y ntp
+log_info "Install Ntp..."
+yum install -y --quiet ntp
 
 # configure cloudstack repo info
 cat > /etc/yum.repos.d/cloudstack.repo << EOF
@@ -26,12 +28,14 @@ gpgcheck=0
 EOF
 
 # install cloudstack-management
+log_info "Install cloudstack-management..."
 yum install -y --quiet cloudstack-management
 
 # install mysql-server, update the repo link if necessary
 yum install -y --quiet 'http://repo.mysql.com/mysql-community-release-el7-5.noarch.rpm'
 
 # install and configure mysql
+log_info "Install mysql-server..."
 yum install -y --quiet mysql-server
 
 cat > /etc/my.cnf.d/cloudstack.cnf << EOF
@@ -92,7 +96,8 @@ cloudstack-setup-databases cloud:cloudstack@localhost \
 #-i <management_server_ip>
 
 # config nfs share as primary and secondary storage
-yum install -y nfs-utils
+log_info "Install nfs-utils..."
+yum install -y --quiet nfs-utils
 
 mkdir -p /export/primary
 mkdir -p /export/secondary
@@ -101,17 +106,48 @@ echo "/export  *(rw,async,no_root_squash,no_subtree_check)" >> /etc/exports
 
 exportfs -a
 
-# create the mount point on localhost
+cat >> /etc/sysconfig/nfs << EOF
+LOCKD_TCPPORT=32803
+LOCKD_UDPPORT=32769
+MOUNTD_PORT=892
+RQUOTAD_PORT=875
+STATD_PORT=662
+STATD_OUTGOING_PORT=2020
+EOF
+
+# This is a sandbox so we just disable security rules
+for srv in "iptables firewalld"
+do
+    systemctl disable ${srv}
+    systemctl stop  ${srv}
+done
+
+for srv in "rpc-bind nfs-server"
+do
+    systemctl enable ${srv}
+    systemctl restart  ${srv}
+done
+
+# create the mount point on localhost, since it is also a nfs client
 SEC_MOUNT="/mnt/secondary"
-[[ ! -d ${SEC_MOUNT} ]] && mkdir -p ${SEC_MOUNT} 
+[[ ! -d ${SEC_MOUNT} ]] && mkdir -p ${SEC_MOUNT}
 
-echo "$(hostname -f):/secondary ${SEC_MOUNT}   nfs  nfsvers=3,rw   0 0" >> /etc/fstab
+echo "$(hostname -f):/export/secondary   ${SEC_MOUNT}   nfs   defaults   0 0" >> /etc/fstab
+mount ${SEC_MOUNT} 
 
-mount /mnt/secondary
+
+# Uncomment this line when NFSv4 communication is needed between client and server
+# sed -i 's/#Domain = local.domain.edu/Domain = acs-sandbox.priv/' /etc/idmapd.conf
+
+# Install system vm template
+/usr/share/cloudstack-common/scripts/storage/secondary/cloud-install-sys-tmplt \
+-m /mnt/secondary \
+-u http://cloudstack.apt-get.eu/systemvm/4.6/systemvm64template-4.6.0-kvm.qcow2.bz2 \
+-h kvm \
+-F
+
 #########################################################
 # finish install and configure process
 #########################################################
-yum install -y vim
-
-
-
+log_info "Install utils package..."
+yum install -y --quiet vim
