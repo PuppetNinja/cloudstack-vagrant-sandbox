@@ -88,12 +88,14 @@ then
 fi
 
 # setup cloudstack database
-cloudstack-setup-databases cloud:cloudstack@localhost \
---deploy-as=root:cloudstack \
--m cloudstack \
--k cloudstack 
-# finish this after editing vagrant file
-#-i <management_server_ip>
+cloudstack-setup-databases "cloud:cloudstack@localhost" \
+--deploy-as="root:cloudstack" \
+-m "cloudstack" \
+-k "cloudstack" \
+-i "192.168.10.2"
+
+# finish the cloustack management server setup
+cloudstack-setup-management --tomcat7
 
 # config nfs share as primary and secondary storage
 log_info "Install nfs-utils..."
@@ -145,6 +147,13 @@ mount ${SEC_MOUNT}
 -u http://cloudstack.apt-get.eu/systemvm/4.6/systemvm64template-4.6.0-kvm.qcow2.bz2 \
 -h kvm \
 -F
+
+# change the permission for the logs
+chmod -R 777 /var/log/cloudstack
+chmod -R 777 /var/log/cloudstack-management
+
+# start cloudstack-management service
+systemctl start cloudstack-management
 
 #########################################################
 # finish install and configure process

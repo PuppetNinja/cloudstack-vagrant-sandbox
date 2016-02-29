@@ -18,6 +18,12 @@ Vagrant.configure(2) do |config|
     cloudstack_mgmt.vm.network "private_network",
       ip: "192.168.10.2",
       netmask: "255.255.255.0"
+    # cloustack management vm 4GB ram and 2 vpus
+    cloudstack_mgmt.vm.provider "virtualbox" do |acs_mgmt_vb|
+      acs_mgmt_vb.name = "cloustack-mgmt-server"
+      acs_mgmt_vb.memory = 4096
+      acs_mgmt_vb.cpus = 2
+    end
     # run bootstrap for cloudstack management server
     cloudstack_mgmt.vm.provision "shell", path: "acs-bootstrap/cloudstack-mgmt-bootstrap.sh"
   end
