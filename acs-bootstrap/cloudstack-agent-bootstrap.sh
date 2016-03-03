@@ -42,6 +42,37 @@ do
     systemctl stop  ${srv}
 done
 
+# Add sudoer conf for cloudstack user
+cat > /etc/sudoers.d/01_cloudstack.conf << EOF
+cloudstack ALL=NOPASSWD: /usr/bin/cloudstack-setup-agent
+defaults:cloudstack !requiretty
+EOF
+
+# Disable the security for libvirt tls communication, they are all commented out in the
+# libvirtd conf
+cat >> /etc/libvirt/libvirtd.conf << EOF
+listen_tls = 0
+listen_tcp = 1
+tcp_port = "16509"
+auth_tcp = "none"
+mdns_adv = 0
+EOF
+
+sed -i 's/#LIBVIRTD_ARGS="--listen"/LIBVIRTD_ARGS="--listen"/' /etc/sysconfig/libvirtd
+
+systemctl restart libvirtd
+
+log_info "Install openvswitch..."
+cat > /etc/yum.repos.d/CentOS-cloud.repo << EOF
+[cloud]
+name=CentOS-$releasever - Cloud
+baseurl=http://mirror.centos.org/centos/$releasever/cloud/$basearch/openstack-liberty
+gpgcheck=0
+EOF
+
+yum install -y --quiet openvswitch
+
+
 #########################################################
 # finish install and configure process
 #########################################################
