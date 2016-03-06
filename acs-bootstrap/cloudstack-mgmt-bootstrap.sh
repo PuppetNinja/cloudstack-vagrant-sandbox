@@ -5,8 +5,6 @@
 
 source "/home/vagrant/sync/acs-bootstrap/bootstrap-utils.sh"
 
-log_info "Install Expect..."
-yum install -y --quiet expect
 
 #########################################################
 # start install and configure process
@@ -152,8 +150,16 @@ mount ${SEC_MOUNT}
 chmod -R 777 /var/log/cloudstack
 chmod -R 777 /var/log/cloudstack-management
 
+# Enable ip forward on cloudstack-mgmt-server
+echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
+sysctl -p /etc/sysctl.conf
+
 # start cloudstack-management service
 systemctl start cloudstack-management
+
+# Install cloud-moneky
+yum install -y --quiet python-pip python-devel
+pip install cloudmonkey
 
 #########################################################
 # finish install and configure process
