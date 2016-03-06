@@ -62,17 +62,78 @@ sed -i 's/#LIBVIRTD_ARGS="--listen"/LIBVIRTD_ARGS="--listen"/' /etc/sysconfig/li
 
 systemctl restart libvirtd
 
+# configure cloudstack agent network part
+systemctl disable NetworkManager
+systemctl stop NetworkManager
+
 log_info "Install openvswitch..."
 cat > /etc/yum.repos.d/CentOS-cloud.repo << EOF
 [cloud]
-name=CentOS-$releasever - Cloud
-baseurl=http://mirror.centos.org/centos/$releasever/cloud/$basearch/openstack-liberty
+name=CentOS-\$releasever - Cloud
+baseurl=http://mirror.centos.org/centos/\$releasever/cloud/\$basearch/openstack-liberty
 gpgcheck=0
 EOF
 
 yum install -y --quiet openvswitch
 
 
+# config eth1 interface
+cat > /etc/sysconfig/network-scripts/ifcfg-eth1 << EOF
+NM_CONTROLLED
+BOOTPROTO=none
+ONBOOT=yes
+DEVICE=eth1
+PEERDNS=no
+EOF
+
+# get hostname to configure ovs bridge
+if [[ $(hostname -f) =~ agent1 ]]
+then
+# config cloudbr bridge
+    cat > /etc/sysconfig/network-scripts/ifcfg-cloudbr << EOF
+DEVICE=cloudbr
+ONBOOT=yes
+HOTPLUG=no
+BOOTPROTO=none
+IPADDR=192.168.10.3
+GATEWAY=192.168.10.1
+NETMASK=255.255.255.0
+DEVICETYPE=ovs
+TYPE=OVSBridge
+EOF
+
+elif [[ $(hostname -f) =~ agent2 ]]
+then
+# config cloudbr bridge
+    cat > /etc/sysconfig/network-scripts/ifcfg-cloudbr << EOF
+DEVICE=cloudbr
+ONBOOT=yes
+HOTPLUG=no
+IPADDR=192.168.10.4
+GATEWAY=192.168.10.1
+NETMASK=255.255.255.0
+BOOTPROTO=none
+DEVICETYPE=ovs
+TYPE=OVSBridge
+EOF
+
+fi
+
+#remove the legacy default gateway
+ip route del 0/0
+
+# start openvswitch
+systemctl enable openvswitch
+systemctl start  openvswitch
+
+#restart network to bring up cloudbr and eth1
+/etc/init.d/network restart
+
+ip link set eth1 up
+ovs-vsctl add-port cloudbr eth1
+
+log_info "Starting cloudstack-agent service"
+systemctl start cloudstack-agent
 #########################################################
 # finish install and configure process
 #########################################################
