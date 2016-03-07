@@ -116,11 +116,8 @@ STATD_OUTGOING_PORT=2020
 EOF
 
 # This is a sandbox so we just disable security rules
-for srv in "iptables firewalld"
-do
-    systemctl disable ${srv}
-    systemctl stop  ${srv}
-done
+systemctl disable firewalld
+systemctl stop  firewalld
 
 for srv in "rpc-bind nfs-server"
 do
@@ -154,6 +151,13 @@ chmod -R 777 /var/log/cloudstack-management
 echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
 sysctl -p /etc/sysctl.conf
 
+log_info "Add iptable rules for ip forwarding..."
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth1 -m state \
+         --state RELATED,ESTABLISHED -j ACCEPT
+iptables-save > /etc/iptables.rules
+
 # start cloudstack-management service
 systemctl start cloudstack-management
 
@@ -166,3 +170,4 @@ pip install cloudmonkey
 #########################################################
 log_info "Install utils package..."
 yum install -y --quiet vim
+yum install -y --quiet tcpdump

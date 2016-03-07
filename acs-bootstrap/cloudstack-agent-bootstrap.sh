@@ -84,6 +84,7 @@ BOOTPROTO=none
 ONBOOT=yes
 DEVICE=eth1
 PEERDNS=no
+BRIDGE=cloudbr
 EOF
 
 # get hostname to configure ovs bridge
@@ -98,8 +99,9 @@ BOOTPROTO=none
 IPADDR=192.168.10.3
 GATEWAY=192.168.10.1
 NETMASK=255.255.255.0
-DEVICETYPE=ovs
-TYPE=OVSBridge
+#DEVICETYPE=ovs
+#TYPE=OVSBridge
+TYPE=Bridge
 EOF
 
 elif [[ $(hostname -f) =~ agent2 ]]
@@ -113,24 +115,29 @@ IPADDR=192.168.10.4
 GATEWAY=192.168.10.1
 NETMASK=255.255.255.0
 BOOTPROTO=none
-DEVICETYPE=ovs
-TYPE=OVSBridge
+#DEVICETYPE=ovs
+#TYPE=OVSBridge
+TYPE=Bridge
 EOF
 
 fi
 
-#remove the legacy default gateway
-ip route del 0/0
 
 # start openvswitch
-systemctl enable openvswitch
-systemctl start  openvswitch
+#systemctl enable openvswitch
+#systemctl start  openvswitch
 
 #restart network to bring up cloudbr and eth1
 /etc/init.d/network restart
 
-ip link set eth1 up
-ovs-vsctl add-port cloudbr eth1
+#remove the legacy default gateway
+ip route del 0/0
+
+#ip link set eth1 up
+#brctl addif cloudbr eth1
+
+ip route add default via 192.168.10.2 dev cloudbr
+#ovs-vsctl add-port cloudbr eth1
 
 log_info "Starting cloudstack-agent service"
 systemctl start cloudstack-agent
