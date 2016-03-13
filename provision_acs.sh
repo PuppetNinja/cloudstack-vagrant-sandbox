@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # bring up vms, do the install
-vagrant up --provider=virtualbox
+vagrant up --provider=libvirt --no-parallel
 
 if [[ $? -eq 0 ]]
 then
